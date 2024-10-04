@@ -1,52 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Trash2 } from 'lucide-react';
-
-const COLORS = [
-  '#2563eb', // blue
-  '#dc2626', // red
-  '#16a34a', // green
-  '#9333ea', // purple
-  '#ea580c', // orange
-  '#0891b2', // cyan
-  '#4f46e5', // indigo
-  '#db2777', // pink
-];
-const PRESETS = {
-  circle: {
-    name: 'Circle',
-    expression: 'sqrt(4 - x^2)',
-    complementary: '-sqrt(4 - x^2)',
-    description: 'x² + y² = 4'
-  },
-  ellipse: {
-    name: 'Ellipse',
-    expression: 'sqrt(4 - x^2/4)',
-    complementary: '-sqrt(4 - x^2/4)',
-    description: 'x²/4 + y² = 4'
-  },
-  parabola: {
-    name: 'Parabola',
-    expression: 'x^2',
-    description: 'y = x²'
-  },
-  hyperbola: {
-    name: 'Hyperbola',
-    expression: 'sqrt(x^2/4 - 1)',
-    complementary: '-sqrt(x^2/4 - 1)',
-    description: 'x²/4 - y² = 1'
-  },
-  line: {
-    name: 'Line',
-    expression: '2*x + 1',
-    description: 'y = 2x + 1'
-  },
-  sine: {
-    name: 'Sine Wave',
-    expression: 'sin(x)',
-    description: 'y = sin(x)'
-  }
-};
-
+import getRandomHexColor from '../functions/generateColour.js';
+import Instructions from '../components/Instructions';
+import { COLORS } from '../components/constants/constants.js';
+import { PRESETS } from '../components/constants/constants.js';
 const GraphingCalculator = () => {
   const [equations, setEquations] = useState([
     { id: 1, expression: 'x * x', color: COLORS[0] , preset:null}
@@ -315,12 +272,15 @@ const GraphingCalculator = () => {
   };
   const addEquation = (preset = null) => {
     const newId = Math.max(0, ...equations.map(eq => eq.id)) + 1;
-    const colorIndex = equations.length % COLORS.length;
-    
+    let colorIndex = equations.length;
+    if(colorIndex>=COLORS.length){
+      colorIndex=-1
+    }
+    const color= colorIndex==-1? getRandomHexColor():COLORS[colorIndex];
     let newEquation = {
       id: newId,
       expression: '',
-      color: COLORS[colorIndex],
+      color:color ,
       preset: null
     };
 
@@ -336,7 +296,7 @@ const GraphingCalculator = () => {
       const complementaryEquation = {
         id: complementaryId,
         expression: PRESETS[preset].complementary,
-        color: COLORS[colorIndex],
+        color: color,
         preset: preset
       };
       setEquations(prev => [...prev, complementaryEquation]);
@@ -455,7 +415,7 @@ const GraphingCalculator = () => {
             </div>
           ))}
           
-          {equations.length < COLORS.length && (
+          {(
             <button
               onClick={() => addEquation()}
               className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -464,18 +424,7 @@ const GraphingCalculator = () => {
             </button>
           )}
           
-          <div className="mt-6">
-            <h2 className="font-medium text-gray-700 mb-2">Instructions:</h2>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Select a preset shape or enter a custom equation</li>
-              <li>• Use mouse wheel to zoom</li>
-              <li>• Click and drag to pan</li>
-              <li>• Use x as the variable</li>
-              <li>• Supported functions: sin, cos, tan, sqrt, abs</li>
-              <li>• Use ^ for exponents (e.g., x^2)</li>
-              <li>• Use pi for π</li>
-            </ul>
-          </div>
+         <Instructions></Instructions>
         </div>
       </div>
       
