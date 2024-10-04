@@ -11,10 +11,45 @@ const COLORS = [
   '#4f46e5', // indigo
   '#db2777', // pink
 ];
+const PRESETS = {
+  circle: {
+    name: 'Circle',
+    expression: 'sqrt(4 - x^2)',
+    complementary: '-sqrt(4 - x^2)',
+    description: 'x² + y² = 4'
+  },
+  ellipse: {
+    name: 'Ellipse',
+    expression: 'sqrt(4 - x^2/4)',
+    complementary: '-sqrt(4 - x^2/4)',
+    description: 'x²/4 + y² = 4'
+  },
+  parabola: {
+    name: 'Parabola',
+    expression: 'x^2',
+    description: 'y = x²'
+  },
+  hyperbola: {
+    name: 'Hyperbola',
+    expression: 'sqrt(x^2/4 - 1)',
+    complementary: '-sqrt(x^2/4 - 1)',
+    description: 'x²/4 - y² = 1'
+  },
+  line: {
+    name: 'Line',
+    expression: '2*x + 1',
+    description: 'y = 2x + 1'
+  },
+  sine: {
+    name: 'Sine Wave',
+    expression: 'sin(x)',
+    description: 'y = sin(x)'
+  }
+};
 
 const GraphingCalculator = () => {
   const [equations, setEquations] = useState([
-    { id: 1, expression: 'x * x', color: COLORS[0] }
+    { id: 1, expression: 'x * x', color: COLORS[0] , preset:null}
   ]);
   const [error, setError] = useState({});
   const [scale, setScale] = useState(20);
@@ -69,8 +104,11 @@ const GraphingCalculator = () => {
     [scale, center, svgDimensions.height]
   );
 
-  const evaluateExpression = useCallback((x, expr) => {
+  const evaluateExpression = useCallback((x, expr, preset=null) => {
     try {
+      if(preset && PRESETS[preset].domain && !PRESETS[preset].domain(x)){
+        return null;
+      }
       const safeExpr = expr
         .replace(/sin/g, 'Math.sin')
         .replace(/cos/g, 'Math.cos')
@@ -87,7 +125,7 @@ const GraphingCalculator = () => {
 
   const generatePoints = useCallback(() => {
     const newPoints = {};
-    const step = scale / svgDimensions.width;
+    const step = scale / (svgDimensions.width*2);
 
     equations.forEach(eq => {
       const points = [];
@@ -97,7 +135,7 @@ const GraphingCalculator = () => {
 
       for (let x = startX; x <= endX; x += step) {
         try {
-          const y = evaluateExpression(x, eq.expression);
+          const y = evaluateExpression(x, eq.expression, eq.preset);
           if (y !== null && !isNaN(y) && isFinite(y)) {
             points.push([toSVGX(x), toSVGY(y)]);
             isValid = true;
@@ -275,15 +313,34 @@ const GraphingCalculator = () => {
     }
     return value.toFixed(1);
   };
-
-  const addEquation = () => {
+  const addEquation = (preset = null) => {
     const newId = Math.max(0, ...equations.map(eq => eq.id)) + 1;
     const colorIndex = equations.length % COLORS.length;
-    setEquations([...equations, { 
-      id: newId, 
-      expression: '', 
-      color: COLORS[colorIndex]
-    }]);
+    
+    let newEquation = {
+      id: newId,
+      expression: '',
+      color: COLORS[colorIndex],
+      preset: null
+    };
+
+    if (preset && PRESETS[preset]) {
+      newEquation.expression = PRESETS[preset].expression;
+      newEquation.preset = preset;
+    }
+
+    setEquations([...equations, newEquation]);
+
+    if (preset && PRESETS[preset].complementary) {
+      const complementaryId = newId + 1;
+      const complementaryEquation = {
+        id: complementaryId,
+        expression: PRESETS[preset].complementary,
+        color: COLORS[colorIndex],
+        preset: preset
+      };
+      setEquations(prev => [...prev, complementaryEquation]);
+    }
   };
 
   const removeEquation = (id) => {
@@ -301,6 +358,52 @@ const GraphingCalculator = () => {
     ));
   };
 
+  const handlePresetChange = (id, preset) => {
+    const equationIndex = equations.findIndex(eq => eq.id === id);
+    if (equationIndex === -1) return;
+
+    const newEquations = [...equations];
+    
+    // Remove any complementary equations from the previous preset
+    const currentPreset = equations[equationIndex].preset;
+    if (currentPreset && PRESETS[currentPreset].complementary) {
+      const complementaryIndex = equations.findIndex(
+        (eq, i) => i > equationIndex && eq.preset === currentPreset
+      );
+      if (complementaryIndex !== -1) {
+        newEquations.splice(complementaryIndex, 1);
+      }
+    }
+
+    // Update the current equation
+    if (preset === 'custom') {
+      newEquations[equationIndex] = {
+        ...newEquations[equationIndex],
+        expression: '',
+        preset: null
+      };
+    } else {
+      newEquations[equationIndex] = {
+        ...newEquations[equationIndex],
+        expression: PRESETS[preset].expression,
+        preset: preset
+      };
+
+      // Add complementary equation if needed
+      if (PRESETS[preset].complementary) {
+        const newId = Math.max(0, ...equations.map(eq => eq.id)) + 1;
+        newEquations.splice(equationIndex + 1, 0, {
+          id: newId,
+          expression: PRESETS[preset].complementary,
+          color: newEquations[equationIndex].color,
+          preset: preset
+        });
+      }
+    }
+
+    setEquations(newEquations);
+  };
+
   return (
     <div className="flex h-screen">
       <div className="w-80 p-4 border-r bg-gray-50 overflow-y-auto">
@@ -314,13 +417,19 @@ const GraphingCalculator = () => {
                   className="w-4 h-4 rounded-full" 
                   style={{ backgroundColor: eq.color }}
                 />
-                <input
-                  value={eq.expression}
-                  onChange={(e) => updateEquation(eq.id, e.target.value)}
-                  placeholder="e.g., x * x"
+                <select
+                  value={eq.preset || "custom"}
+                  onChange={(e) => handlePresetChange(eq.id, e.target.value)}
                   className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                {equations.length > 1 && (
+                >
+                  <option value="custom">Custom</option>
+                  {Object.entries(PRESETS).map(([key, preset]) => (
+                    <option key={key} value={key}>
+                      {preset.name}
+                    </option>
+                  ))}
+                </select>
+                {equations.length > 0 && (
                   <button 
                     onClick={() => removeEquation(eq.id)}
                     className="p-2 text-gray-500 hover:text-red-500"
@@ -329,6 +438,17 @@ const GraphingCalculator = () => {
                   </button>
                 )}
               </div>
+              <input
+                value={eq.expression}
+                onChange={(e) => updateEquation(eq.id, e.target.value)}
+                placeholder="e.g., x * x"
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {eq.preset && (
+                <div className="text-sm text-gray-500">
+                  {PRESETS[eq.preset].description}
+                </div>
+              )}
               {error[eq.id] && (
                 <div className="text-red-500 text-sm">{error[eq.id]}</div>
               )}
@@ -337,7 +457,7 @@ const GraphingCalculator = () => {
           
           {equations.length < COLORS.length && (
             <button
-              onClick={addEquation}
+              onClick={() => addEquation()}
               className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               Add Equation
@@ -347,6 +467,7 @@ const GraphingCalculator = () => {
           <div className="mt-6">
             <h2 className="font-medium text-gray-700 mb-2">Instructions:</h2>
             <ul className="text-sm text-gray-600 space-y-1">
+              <li>• Select a preset shape or enter a custom equation</li>
               <li>• Use mouse wheel to zoom</li>
               <li>• Click and drag to pan</li>
               <li>• Use x as the variable</li>
