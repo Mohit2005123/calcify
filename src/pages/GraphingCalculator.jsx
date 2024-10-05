@@ -6,7 +6,7 @@ import { COLORS } from '../components/constants/constants.js';
 import { PRESETS } from '../components/constants/constants.js';
 const GraphingCalculator = () => {
   const [equations, setEquations] = useState([
-    { id: 1, expression: 'x * x', color: COLORS[0] , preset:null}
+    { id: 1, expression: 'x^2', color: COLORS[0] , preset:null}
   ]);
   const [error, setError] = useState({});
   const [scale, setScale] = useState(20);
@@ -17,7 +17,6 @@ const GraphingCalculator = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [svgDimensions, setSvgDimensions] = useState({ width: 500, height: 500 });
-
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {

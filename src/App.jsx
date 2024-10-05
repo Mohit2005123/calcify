@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 import Home from './pages/Home';
 import GraphingCalculator from './pages/GraphingCalculator';
+import Visualiser from './pages/visualiser/visualiser';
+import SortingAlgo from './pages/visualiser/SortingAlgo';
 function App() {
 
   return (
@@ -10,6 +12,8 @@ function App() {
         <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/graphingCalc" element={<GraphingCalculator />} />
+        <Route path="/visualiser" element={<Visualiser />} />
+        <Route path="/visualiser/sorting" element={<SortingAlgo />} />
         </Routes>
       </Router>
     </div>
