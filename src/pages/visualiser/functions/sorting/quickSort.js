@@ -1,5 +1,3 @@
-// src/algorithms/quickSort.js
-
 export const quickSort = async (array, low, high, setArray, sleep) => {
     if (low < high) {
       let pi = await partition(array, low, high, setArray, sleep);

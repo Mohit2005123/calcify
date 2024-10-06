@@ -5,6 +5,7 @@ import GraphingCalculator from './pages/GraphingCalculator';
 import Visualiser from './pages/visualiser/visualiser';
 import SortingAlgo from './pages/visualiser/SortingAlgo';
 import BinaryTree from './pages/visualiser/BinaryTree';
+import BinarySearchTree from './pages/visualiser/BinarySearchTree';
 function App() {
 
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/visualiser" element={<Visualiser />} />
         <Route path="/visualiser/sorting" element={<SortingAlgo />} />
         <Route path="/visualiser/binarytree" element={<BinaryTree />} />
+        <Route path="/visualiser/binarysearchtree" element={<BinarySearchTree />} />
         </Routes>
       </Router>
     </div>

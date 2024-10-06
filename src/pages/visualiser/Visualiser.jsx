@@ -11,7 +11,7 @@ const Visualiser = () => {
             Go to Page 1
           </button>
         </Link>
-        <Link to="/page2">
+        <Link to="/visualiser/binarytree">
           <button className="bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg hover:bg-blue-600 transition duration-300 ease-in-out">
             Go to Page 2
           </button>
