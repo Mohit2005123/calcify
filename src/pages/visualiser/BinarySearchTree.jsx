@@ -17,26 +17,28 @@ const BinarySearchTree = () => {
   const canvasRef = useRef(null);
   const [deleteNumber, setDeleteNumber]= useState('');
   // Calculate node positions for visualization
-  const updateNodePositions = (node, minX, maxX, level, positions = []) => {
+  const updateNodePositions = (node, depth = 0, positions = [], leftBound = 0, rightBound = 1) => {
     if (!node) return positions;
 
-    const x = (minX + maxX) / 2;
-    const y = level * 80 + 50;
-    
-    node.x = x;
+    const horizontalSpacing = 1 / (Math.pow(2, depth + 1));
+    const x = leftBound + (rightBound - leftBound) / 2;
+    const y = depth * 80 + 50;
+
+    node.x = x * 800; // Scale x to fit within 800px width
     node.y = y;
+
     positions.push({
       id: node.id,
       value: node.value,
-      position: { x, y }
+      position: { x: node.x, y: node.y }
     });
 
-    const gap = (maxX - minX) / 4;
-    updateNodePositions(node.left, minX, x - gap, level + 1, positions);
-    updateNodePositions(node.right, x + gap, maxX, level + 1, positions);
+    updateNodePositions(node.left, depth + 1, positions, leftBound, x);
+    updateNodePositions(node.right, depth + 1, positions, x, rightBound);
 
     return positions;
   };
+
   const findMin = (node) => {
     let current = node;
     while (current && current.left) {
@@ -175,7 +177,7 @@ const startVisualization = async () => {
   const getNodesAndLines = () => {
     if (!root) return { nodes: [], lines: [] };
 
-    const nodes = updateNodePositions(root, 0, 800, 0);
+    const nodes = updateNodePositions(root);
     const lines = [];
 
     const addLines = (node) => {
