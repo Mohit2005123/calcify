@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { Plus, Play, Trash2, GitBranch } from 'lucide-react';
+import { Plus, Play, Trash2, GitBranch, ToggleLeft, ToggleRight } from 'lucide-react';
 import {bfs, dfs} from './functions/Graphs/Traversal.js';
+import { dijkstra } from './functions/Graphs/shortestPath.js';
 const Graph = () => {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
@@ -15,6 +16,9 @@ const Graph = () => {
   const [isAnimating, setIsAnimating] = useState(false);
   const canvasRef = useRef(null);
   const [nextId, setNextId] = useState(0);
+  const [startNode, setStartNode]= useState(null);
+  const [endNode, setEndNode]= useState(null);
+  const [isWeighted, setIsWeighted]= useState(false);
   const addNode = () => {
     if (inputValue.trim()) {
       // Define constants for layout
@@ -93,18 +97,32 @@ const Graph = () => {
       });
     }
   };
-
   const handleNodeClick = (nodeId) => {
-    if (!isDrawingLine) return;
+    if (!isDrawingLine) {
+      if (!startNode) {
+        setStartNode(nodeId);
+      } else if (!endNode && nodeId !== startNode) {
+        setEndNode(nodeId);
+      } else {
+        setStartNode(nodeId);
+        setEndNode(null);
+      }
+      return;
+    }
 
     if (lineStart === null) {
       setLineStart(nodeId);
     } else if (lineStart !== nodeId) {
-      // Complete the line
+      let weight = 1;
+      if (isWeighted) {
+        const inputWeight = prompt("Enter edge weight:", "1");
+        weight = parseInt(inputWeight, 10) || 1;
+      }
       const newEdge = {
         id: `${lineStart}-${nodeId}`,
         from: lineStart,
-        to: nodeId
+        to: nodeId,
+        weight: weight
       };
       
       if (!edges.some(edge => 
@@ -114,11 +132,21 @@ const Graph = () => {
         setEdges([...edges, newEdge]);
       }
       
-      // Reset line drawing state
       setLineStart(null);
       setTempLine(null);
     }
   };
+  const toggleWeighted = () => {
+    setIsWeighted(!isWeighted);
+    if (selectedAlgorithm === 'dijkstra' && !isWeighted) {
+      setSelectedAlgorithm('bfs');
+    }
+    // Reset edge weights to 1 when switching to unweighted
+    if (isWeighted) {
+      setEdges(edges.map(edge => ({ ...edge, weight: 1 })));
+    }
+  };
+
 
   const toggleLineDrawing = () => {
     setIsDrawingLine(!isDrawingLine);
@@ -127,24 +155,33 @@ const Graph = () => {
       setTempLine(null);
     }
   };
-const startVisualization = async () => {
-    if (nodes.length === 0) return;
+  const startVisualization = async () => {
+    if (nodes.length === 0 || !startNode || (selectedAlgorithm === 'dijkstra' && !endNode)) return;
     setIsAnimating(true);
     setHighlightedNodes([]);
     setHighlightedEdges([]);
   
-    const startNode = nodes[0].id;
-    if (selectedAlgorithm === 'bfs') {
+    if (selectedAlgorithm === 'dijkstra' && isWeighted) {
+      const { path, visitedOrder } = await dijkstra(startNode, endNode, nodes, edges);
+      
+      for (let node of visitedOrder) {
+        setHighlightedNodes(prev => [...prev, node]);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      for (let i = 0; i < path.length - 1; i++) {
+        const edgeId = `${path[i]}-${path[i+1]}`;
+        setHighlightedEdges(prev => [...prev, edgeId]);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    } else if (selectedAlgorithm === 'bfs') {
       await bfs(startNode, edges, setHighlightedNodes, setHighlightedEdges);
     } else if (selectedAlgorithm === 'dfs') {
       await dfs(startNode, edges, setHighlightedNodes, setHighlightedEdges);
     }
   
-    setHighlightedNodes([]);
-    setHighlightedEdges([]);
     setIsAnimating(false);
   };
-
   return (
     <div className="p-4 max-w-4xl mx-auto">
       <div className="mb-6 flex gap-4 items-center">
@@ -177,6 +214,17 @@ const startVisualization = async () => {
         >
           <Trash2 size={20} /> Clear Graph
         </button>
+        <button
+          onClick={toggleWeighted}
+          className={`px-4 py-2 rounded-md flex items-center gap-2 ${
+            isWeighted
+              ? 'bg-indigo-500 hover:bg-indigo-600 text-white'
+              : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+          }`}
+        >
+          {isWeighted ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+          {isWeighted ? 'Weighted' : 'Unweighted'}
+        </button>
       </div>
 
       <div className="mb-6 flex gap-4 items-center">
@@ -187,10 +235,11 @@ const startVisualization = async () => {
         >
           <option value="bfs">Breadth-First Search</option>
           <option value="dfs">Depth-First Search</option>
+          <option value='dijkstra' disabled={!isWeighted}>Dijkstra's Algorithm</option>
         </select>
         <button
           onClick={startVisualization}
-          disabled={isAnimating || nodes.length === 0}
+          disabled={isAnimating || nodes.length === 0 || !startNode || (selectedAlgorithm === 'dijkstra' && !endNode)}
           className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Play size={20} /> Visualize
@@ -199,7 +248,7 @@ const startVisualization = async () => {
 
       {isDrawingLine && (
         <div className="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-md">
-          Click on two nodes to connect them with a line. Click "Cancel Line" to exit line drawing mode.
+          Click on two nodes to connect them with a line. {isWeighted && "You'll be prompted to enter the edge weight."} Click "Cancel Line" to exit line drawing mode.
         </div>
       )}
 
@@ -216,16 +265,32 @@ const startVisualization = async () => {
             const toNode = nodes.find(n => n.id === edge.to);
             if (!fromNode || !toNode) return null;
 
+            const midX = (fromNode.position.x + toNode.position.x) / 2 + 25;
+            const midY = (fromNode.position.y + toNode.position.y) / 2 + 25;
+
             return (
-              <line
-                key={edge.id}
-                x1={fromNode.position.x + 25}
-                y1={fromNode.position.y + 25}
-                x2={toNode.position.x + 25}
-                y2={toNode.position.y + 25}
-                stroke={highlightedEdges.includes(edge.id) ? "#22c55e" : "#94a3b8"}
-                strokeWidth="2"
-              />
+              <g key={edge.id}>
+                <line
+                  x1={fromNode.position.x + 25}
+                  y1={fromNode.position.y + 25}
+                  x2={toNode.position.x + 25}
+                  y2={toNode.position.y + 25}
+                  stroke={highlightedEdges.includes(edge.id) ? "#22c55e" : "#94a3b8"}
+                  strokeWidth="2"
+                />
+                {isWeighted && (
+                  <text
+                    x={midX}
+                    y={midY}
+                    textAnchor="middle"
+                    dy=".3em"
+                    fill="#4b5563"
+                    fontSize="12"
+                  >
+                    {edge.weight}
+                  </text>
+                )}
+              </g>
             );
           })}
           {tempLine && (
@@ -248,7 +313,9 @@ const startVisualization = async () => {
             onClick={() => handleNodeClick(node.id)}
             className={`absolute cursor-${isDrawingLine ? 'pointer' : 'move'} w-[50px] h-[50px] rounded-full 
               flex items-center justify-center
-              ${highlightedNodes.includes(node.id) ? 'bg-green-500' : 'bg-blue-500'}
+              ${highlightedNodes.includes(node.id) ? 'bg-green-500' : 
+                node.id === startNode ? 'bg-blue-500' :
+                node.id === endNode ? 'bg-purple-500' : 'bg-gray-400'}
               ${isDrawingLine && lineStart === node.id ? 'ring-2 ring-yellow-400' : ''}
               text-white font-semibold transition-colors`}
             style={{
