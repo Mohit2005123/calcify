@@ -1,254 +1,358 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ArrowRight, Plus, Play, Trash2 } from 'lucide-react';
-import Node from './functions/BinaryTree/Node';
-import Button from './functions/BinaryTree/Button';
-import Select from './functions/BinaryTree/Select';
-import Line from './functions/BinaryTree/Line';
-import { traverseInOrder, traversePostOrder, traversePreOrder, traverseLevelOrder } from './functions/BinaryTree/TraversalAlgo';
-const BinaryTree = () => {
+import { useState, useRef } from 'react';
+
+const BinaryTreeVisualizer = () => {
   const [nodes, setNodes] = useState([]);
-  const [inputNumber, setInputNumber] = useState('');
-  const [draggingId, setDraggingId] = useState(null);
-  const [selectedAlgorithm, setSelectedAlgorithm] = useState('inorder');
-  const [highlightedNodes, setHighlightedNodes] = useState([]);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const canvasRef = useRef(null);
-  const [nextId, setNextId] = useState(0);
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [nodeValue, setNodeValue] = useState('');
+  const [lines, setLines] = useState([]);
+  const [draggingLine, setDraggingLine] = useState(null);
+  const [draggingNode, setDraggingNode] = useState(null);
+  const [highlightedNode, setHighlightedNode] = useState(null);
+  const svgRef = useRef(null);
+  const getLeftChild = (node) => nodes.find(n => n.parent === node.id && n.isLeft);
+  const getRightChild = (node) => nodes.find(n => n.parent === node.id && !n.isLeft);
 
-  const addNumber = () => {
-    if (inputNumber && !isNaN(inputNumber)) {
-      const newNumber = parseInt(inputNumber);
-      const newNode = {
-        id: nextId,
-        value: newNumber,
-        position: { x: nodes.length * 60 + 50, y: 50 }
-      };
-      setNodes([...nodes, newNode]);
-      setInputNumber('');
-      setNextId(nextId + 1);
-    }
+  // Inorder Traversal (Left, Root, Right)
+  const inorderTraversal = (node, visited = []) => {
+    if (!node) return visited;
+    inorderTraversal(getLeftChild(node), visited);
+    visited.push(node);
+    inorderTraversal(getRightChild(node), visited);
+    return visited;
   };
 
-  const clearTree = () => {
-    setNodes([]);
-    setHighlightedNodes([]);
-    setNextId(0);
+  // Preorder Traversal (Root, Left, Right)
+  const preorderTraversal = (node, visited = []) => {
+    if (!node) return visited;
+    visited.push(node);
+    preorderTraversal(getLeftChild(node), visited);
+    preorderTraversal(getRightChild(node), visited);
+    return visited;
   };
 
-  const handleDragStart = (e, id) => {
-    setDraggingId(id);
+  // Postorder Traversal (Left, Right, Root)
+  const postorderTraversal = (node, visited = []) => {
+    if (!node) return visited;
+    postorderTraversal(getLeftChild(node), visited);
+    postorderTraversal(getRightChild(node), visited);
+    visited.push(node);
+    return visited;
   };
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-  };
+  // Visualize traversal by highlighting nodes in sequence
+  const visualizeTraversal = (traversalFunc) => {
+    if (!nodes.length) return;
 
-  const handleDrop = (e, targetPosition) => {
-    e.preventDefault();
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const updatedNodes = nodes.map(node =>
-      node.id === draggingId
-        ? { ...node, position: { x, y } }
-        : node
-    );
-    setNodes(updatedNodes);
-    setDraggingId(null);
-  }
-
-  const startVisualization = async () => {
-    setIsAnimating(true);
-    const root = buildTree();
-
-    if (root) {
-      switch (selectedAlgorithm) {
-        case 'inorder':
-          await traverseInOrder(root, setHighlightedNodes);
-          break;
-        case 'preorder':
-          await traversePreOrder(root, setHighlightedNodes);
-          break;
-        case 'postorder':
-          await traversePostOrder(root, setHighlightedNodes);
-          break;
-        case 'levelorder':
-          await traverseLevelOrder(root, setHighlightedNodes);
-          break;
-        default:
-          break;
-      }
-    }
-
-    setHighlightedNodes([]);
-    setIsAnimating(false);
-  };
-
-  const buildTree = () => {
-    const nodesByY = {};
-    nodes.forEach(node => {
-      const y = Math.round(node.position.y / 50) * 50;
-      if (!nodesByY[y]) nodesByY[y] = [];
-      nodesByY[y].push(node);
+    const rootNode = nodes.find(node => node.parent === null);
+    const traversalOrder = traversalFunc(rootNode);
+    
+    traversalOrder.forEach((node, index) => {
+      setTimeout(() => setHighlightedNode(node.id), index * 1000);
     });
 
-    const levels = Object.keys(nodesByY).sort((a, b) => a - b);
-    if (levels.length === 0) return null;
-
-    const rootLevel = nodesByY[levels[0]];
-    if (rootLevel.length === 0) return null;
-
-    const root = {
-      id: rootLevel[0].id,
-      value: rootLevel[0].value,
-      left: null,
-      right: null,
-      x: rootLevel[0].position.x,
-      y: rootLevel[0].position.y
-    };
-
-    const buildSubtree = (node, level, minX, maxX) => {
-      if (level >= levels.length) return;
-
-      const nextLevelNodes = nodesByY[levels[level]] || [];
-
-      const leftNodes = nextLevelNodes.filter(n =>
-        n.position.x < node.x && n.position.x >= minX
-      );
-      if (leftNodes.length > 0) {
-        const leftChild = leftNodes.reduce((prev, curr) =>
-          Math.abs(curr.position.x - node.x) < Math.abs(prev.position.x - node.x) ? curr : prev
-        );
-        node.left = {
-          id: leftChild.id,
-          value: leftChild.value,
-          left: null,
-          right: null,
-          x: leftChild.position.x,
-          y: leftChild.position.y
-        };
-        buildSubtree(node.left, level + 1, minX, node.x);
-      }
-
-      const rightNodes = nextLevelNodes.filter(n =>
-        n.position.x > node.x && n.position.x <= maxX
-      );
-      if (rightNodes.length > 0) {
-        const rightChild = rightNodes.reduce((prev, curr) =>
-          Math.abs(curr.position.x - node.x) < Math.abs(prev.position.x - node.x) ? curr : prev
-        );
-        node.right = {
-          id: rightChild.id,
-          value: rightChild.value,
-          left: null,
-          right: null,
-          x: rightChild.position.x,
-          y: rightChild.position.y
-        };
-        buildSubtree(node.right, level + 1, node.x, maxX);
-      }
-    };
-
-    buildSubtree(root, 1, -Infinity, Infinity);
-    return root;
+    // Reset highlight after traversal completes
+    setTimeout(() => setHighlightedNode(null), traversalOrder.length * 1000);
+  };
+  // Helper to find parent node
+  const findParentNode = (nodeId) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node || !node.parent) return null;
+    return nodes.find(n => n.id === node.parent);
   };
 
-  const renderLines = () => {
-    const tree = buildTree();
-    if (!tree) return null;
+  // Helper to determine if node is left or right child
+  const isLeftChild = (node) => {
+    const parent = findParentNode(node.id);
+    if (!parent) return null;
+    return node.x < parent.x;
+  };
 
-    const lines = [];
+  // Calculate line metrics
+  const calculateLineMetrics = (x1, y1, x2, y2) => {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const length = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    return { length, angle };
+  };
 
-    const addLines = (node) => {
-      if (node.left) {
-        lines.push(
-          <Line
-            key={`${node.id}-${node.left.id}`}
-            start={{ x: node.x + 24, y: node.y + 24 }}
-            end={{ x: node.left.x + 24, y: node.left.y + 24 }}
-          />
-        );
-        addLines(node.left);
-      }
-      if (node.right) {
-        lines.push(
-          <Line
-            key={`${node.id}-${node.right.id}`}
-            start={{ x: node.x + 24, y: node.y + 24 }}
-            end={{ x: node.right.x + 24, y: node.right.y + 24 }}
-          />
-        );
-        addLines(node.right);
-      }
+  // Add a new node
+  // Add a new node
+  const addNode = (position) => {
+    if (!nodeValue.trim()) return;
+
+    if (position === 'root' && nodes.length > 0) {
+      // Only one root node is allowed
+      alert("The binary tree can only have one root node.");
+      return;
+    }
+
+    // Check if the selected node already has a left or right child
+    const existingChild = nodes.find(n => n.parent === selectedNode.id && n.isLeft === (position === 'left'));
+    if (existingChild) {
+      alert(`The selected node already has a ${position} child.`);
+      return;
+    }
+
+    const newNode = {
+      id: Date.now(),
+      value: nodeValue,
+      x: position === 'root' ? 400 :
+        position === 'left' ? selectedNode.x - 150 :
+          selectedNode.x + 150,
+      y: position === 'root' ? 50 : selectedNode.y + 100,
+      parent: position === 'root' ? null : selectedNode.id,
+      isLeft: position === 'left'
     };
 
-    addLines(tree);
-    return lines;
+    if (position !== 'root') {
+      const { length, angle } = calculateLineMetrics(
+        selectedNode.x,
+        selectedNode.y,
+        newNode.x,
+        newNode.y
+      );
+
+      const newLine = {
+        id: `${selectedNode.id}-${newNode.id}`,
+        startNode: selectedNode.id,
+        endNode: newNode.id,
+        startX: selectedNode.x,
+        startY: selectedNode.y,
+        endX: newNode.x,
+        endY: newNode.y,
+        angle,
+        length
+      };
+      setLines([...lines, newLine]);
+    }
+
+    setNodes([...nodes, newNode]);
+    setNodeValue('');
+  };
+
+
+  // Constrain node position based on parent
+  const constrainNodePosition = (node, newX, newY) => {
+    const parent = findParentNode(node.id);
+    if (!parent) return { x: newX, y: newY }; // Root node can move freely
+
+    const isLeft = isLeftChild(node);
+    const minDistance = 50; // Minimum horizontal distance from parent
+    const maxDistance = 250; // Maximum horizontal distance from parent
+
+    let constrainedX = newX;
+    if (isLeft) {
+      // Left child must stay to the left of parent
+      constrainedX = Math.min(parent.x - minDistance, Math.max(parent.x - maxDistance, newX));
+    } else {
+      // Right child must stay to the right of parent
+      constrainedX = Math.max(parent.x + minDistance, Math.min(parent.x + maxDistance, newX));
+    }
+
+    return { x: constrainedX, y: newY };
+  };
+
+  // Handle node dragging
+  const handleDrag = (e) => {
+    if (!svgRef.current) return;
+
+    if (draggingNode) {
+      const rect = svgRef.current.getBoundingClientRect();
+      const rawX = e.clientX - rect.left;
+      const rawY = e.clientY - rect.top;
+
+      // Apply constraints to the new position
+      const { x, y } = constrainNodePosition(draggingNode, rawX, rawY);
+
+      // Update node position
+      const updatedNodes = nodes.map(node =>
+        node.id === draggingNode.id ? { ...node, x, y } : node
+      );
+      setNodes(updatedNodes);
+
+      // Update connected lines
+      const updatedLines = lines.map(line => {
+        if (line.startNode === draggingNode.id) {
+          const { length, angle } = calculateLineMetrics(x, y, line.endX, line.endY);
+          return { ...line, startX: x, startY: y, length, angle };
+        }
+        if (line.endNode === draggingNode.id) {
+          const { length, angle } = calculateLineMetrics(line.startX, line.startY, x, y);
+          return { ...line, endX: x, endY: y, length, angle };
+        }
+        return line;
+      });
+      setLines(updatedLines);
+    }
+
+    if (draggingLine) {
+      const rect = svgRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const updatedLines = lines.map(line => {
+        if (line.id === draggingLine.line.id) {
+          const startX = draggingLine.end === 'start' ? x : line.startX;
+          const startY = draggingLine.end === 'start' ? y : line.startY;
+          const endX = draggingLine.end === 'end' ? x : line.endX;
+          const endY = draggingLine.end === 'end' ? y : line.endY;
+
+          const { length, angle } = calculateLineMetrics(startX, startY, endX, endY);
+
+          return {
+            ...line,
+            startX,
+            startY,
+            endX,
+            endY,
+            length,
+            angle
+          };
+        }
+        return line;
+      });
+
+      setLines(updatedLines);
+    }
+  };
+
+  const handleNodeDragStart = (node, e) => {
+    e.stopPropagation();
+    setDraggingNode(node);
+  };
+
+  const handleDragEnd = () => {
+    setDraggingNode(null);
+    setDraggingLine(null);
+  };
+
+  // Line length adjustment
+  const adjustLineLength = (line, delta) => {
+    const angle = line.angle * (Math.PI / 180);
+    const newLength = Math.max(30, line.length + delta);
+    const dx = Math.cos(angle) * newLength;
+    const dy = Math.sin(angle) * newLength;
+
+    const updatedLines = lines.map(l => {
+      if (l.id === line.id) {
+        return {
+          ...l,
+          endX: l.startX + dx,
+          endY: l.startY + dy,
+          length: newLength
+        };
+      }
+      return l;
+    });
+
+    setLines(updatedLines);
   };
 
   return (
-    <div className="p-4 max-w-4xl mx-auto">
-      <div className="mb-6 flex gap-4 items-center">
+    <div className="w-full h-screen bg-gray-100 p-4">
+      {/* Control Panel */}
+      <div className="mb-4 flex gap-4 items-center bg-white p-4 rounded-lg shadow">
         <input
-          type="number"
-          value={inputNumber}
-          onChange={(e) => setInputNumber(e.target.value)}
-          placeholder="Enter a number"
-          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          type="text"
+          value={nodeValue}
+          onChange={(e) => setNodeValue(e.target.value)}
+          placeholder="Enter node value"
+          className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <Button onClick={addNumber} className="flex items-center gap-2">
-          <Plus size={20} /> Add Number
-        </Button>
-        <Button onClick={clearTree} className="bg-red-500 hover:bg-red-600 flex items-center gap-2">
-          <Trash2 size={20} /> Clear Tree
-        </Button>
-      </div>
-
-      <div className="mb-6 flex gap-4 items-center">
-        <Select
-          value={selectedAlgorithm}
-          onChange={setSelectedAlgorithm}
-          options={[
-            { value: 'inorder', label: 'In-order Traversal' },
-            { value: 'preorder', label: 'Pre-order Traversal' },
-            { value: 'postorder', label: 'Post-order Traversal' },
-            { value: 'levelorder', label: 'Level-order Traversal' }
-          ]}
-        />
-        <Button
-          onClick={startVisualization}
-          disabled={isAnimating || nodes.length === 0}
-          className="flex items-center gap-2"
+        <button
+          onClick={() => addNode('root')}
+          disabled={nodes.length > 0}
+          className={`px-4 py-2 rounded-md ${nodes.length > 0
+              ? 'bg-gray-300 cursor-not-allowed'
+              : 'bg-blue-500 hover:bg-blue-600 text-white'
+            }`}
         >
-          <Play size={20} /> Visualize
-        </Button>
+          Add Root
+        </button>
+        {selectedNode && (
+          <>
+            <button
+              onClick={() => addNode('left')}
+              className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md"
+            >
+              Add Left
+            </button>
+            <button
+              onClick={() => addNode('right')}
+              className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md"
+            >
+              Add Right
+            </button>
+          </>
+        )}
+        {/* Algorithm Visualization Buttons */}
+        <button onClick={() => visualizeTraversal(inorderTraversal)} className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-md">
+          Visualize Inorder
+        </button>
+        <button onClick={() => visualizeTraversal(preorderTraversal)} className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md">
+          Visualize Preorder
+        </button>
+        <button onClick={() => visualizeTraversal(postorderTraversal)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md">
+          Visualize Postorder
+        </button>
       </div>
 
-      <div
-        ref={canvasRef}
-        className="relative w-full h-[600px] border-2 border-gray-200 rounded-lg bg-gray-50"
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-      >
-        <svg className="absolute top-0 left-0 w-full h-full">
-          {renderLines()}
+      {/* Tree Visualization */}
+      <div className="bg-white rounded-lg shadow p-4 h-[calc(100vh-120px)]">
+        <svg
+          ref={svgRef}
+          className="w-full h-full"
+          onMouseMove={handleDrag}
+          onMouseUp={handleDragEnd}
+          onMouseLeave={handleDragEnd}
+        >
+          {/* Lines */}
+          {lines.map((line) => (
+            <g key={line.id}>
+              <line
+                x1={line.startX}
+                y1={line.startY}
+                x2={line.endX}
+                y2={line.endY}
+                stroke="black"
+                strokeWidth="2"
+                className="cursor-move"
+              />
+            </g>
+          ))}
+
+          {/* Nodes */}
+          {nodes.map((node) => (
+            <g
+              key={node.id}
+              transform={`translate(${node.x},${node.y})`}
+              onMouseDown={(e) => handleNodeDragStart(node, e)}
+              className="cursor-move"
+            >
+              <circle
+                r="25"
+                fill={highlightedNode === node.id ? 'orange' : (selectedNode?.id === node.id ? '#93C5FD' : '#fff')}
+                stroke="#2563EB"
+                strokeWidth="2"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedNode(node);
+                }}
+              />
+              <text
+                textAnchor="middle"
+                dy=".3em"
+                className="select-none pointer-events-none"
+              >
+                {node.value}
+              </text>
+            </g>
+          ))}
         </svg>
-        {nodes.map((node) => (
-          <Node
-            key={node.id}
-            id={node.id}
-            value={node.value}
-            position={node.position}
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-            isHighlighted={highlightedNodes.includes(node.id)}
-          />
-        ))}
       </div>
     </div>
   );
 };
 
-export default BinaryTree;
+export default BinaryTreeVisualizer;

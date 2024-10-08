@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Plus, Play, Trash2, GitBranch, ToggleLeft, ToggleRight } from 'lucide-react';
 import {bfs, dfs} from './functions/Graphs/Traversal.js';
-import { dijkstra } from './functions/Graphs/shortestPath.js';
+import { dijkstra} from './functions/Graphs/shortestPath.js';
 const Graph = () => {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
@@ -162,6 +162,8 @@ const Graph = () => {
     setHighlightedEdges([]);
   
     if (selectedAlgorithm === 'dijkstra' && isWeighted) {
+      console.log(startNode);
+      console.log(endNode);
       const { path, visitedOrder } = await dijkstra(startNode, endNode, nodes, edges);
       
       for (let node of visitedOrder) {
@@ -242,6 +244,7 @@ const Graph = () => {
           disabled={isAnimating || nodes.length === 0 || !startNode || (selectedAlgorithm === 'dijkstra' && !endNode)}
           className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
+          
           <Play size={20} /> Visualize
         </button>
       </div>

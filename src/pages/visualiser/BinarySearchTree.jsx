@@ -17,27 +17,25 @@ const BinarySearchTree = () => {
   const canvasRef = useRef(null);
   const [deleteNumber, setDeleteNumber]= useState('');
   // Calculate node positions for visualization
-  const updateNodePositions = (node, depth = 0, positions = [], leftBound = 0, rightBound = 1) => {
+  const updateNodePositions = (node, depth = 0, positions = [], leftBound = 0, rightBound = 1, depthFactor = 2) => {
     if (!node) return positions;
-
-    const horizontalSpacing = 1 / (Math.pow(2, depth + 1));
     const x = leftBound + (rightBound - leftBound) / 2;
     const y = depth * 80 + 50;
-
     node.x = x * 800; // Scale x to fit within 800px width
     node.y = y;
-
+  
     positions.push({
       id: node.id,
       value: node.value,
       position: { x: node.x, y: node.y }
     });
-
-    updateNodePositions(node.left, depth + 1, positions, leftBound, x);
-    updateNodePositions(node.right, depth + 1, positions, x, rightBound);
-
+  
+    updateNodePositions(node.left, depth + 1, positions, leftBound, x, depthFactor);
+    updateNodePositions(node.right, depth + 1, positions, x, rightBound, depthFactor);
+  
     return positions;
   };
+  
 
   const findMin = (node) => {
     let current = node;

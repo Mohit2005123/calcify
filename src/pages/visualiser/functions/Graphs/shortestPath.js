@@ -72,3 +72,61 @@ export const dijkstra = async (start, end, nodes, edges) => {
       return this.elements.length === 0;
     }
   }
+  export const bellmanFord = async (startNode, endNode, nodes, edges, setHighlightedNodes, setHighlightedEdges) => {
+    const distances = {};
+    const previousNodes = {};
+    const visitedOrder = [];
+  
+    // Initialize distances
+    nodes.forEach(node => {
+      distances[node.id] = Infinity;
+    });
+    distances[startNode] = 0;
+  
+    // Relax edges |V| - 1 times
+    for (let i = 0; i < nodes.length - 1; i++) {
+      for (let edge of edges) {
+        const u = edge.from;
+        const v = edge.to;
+        const weight = edge.weight;
+  
+        // Highlight the nodes and edges being processed
+        setHighlightedNodes(prev => [...prev, u, v]);
+        setHighlightedEdges(prev => [...prev, edge.id]);
+        await new Promise(resolve => setTimeout(resolve, 500));
+  
+        if (distances[u] !== Infinity && distances[u] + weight < distances[v]) {
+          distances[v] = distances[u] + weight;
+          previousNodes[v] = u;
+          visitedOrder.push(v);
+        }
+      }
+    }
+  
+    // Check for negative weight cycles
+    for (let edge of edges) {
+      const u = edge.from;
+      const v = edge.to;
+      const weight = edge.weight;
+  
+      if (distances[u] !== Infinity && distances[u] + weight < distances[v]) {
+        throw new Error("Graph contains negative weight cycle");
+      }
+    }
+  
+    // Reconstruct path if endNode is specified
+    const path = [];
+    if (endNode !== null) {
+      let current = endNode;
+      while (current !== undefined) {
+        path.unshift(current);
+        current = previousNodes[current];
+      }
+    }
+  
+    return {
+      distances,
+      path,
+      visitedOrder
+    };
+  };
