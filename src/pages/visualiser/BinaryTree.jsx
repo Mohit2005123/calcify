@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
-
-const BinaryTreeVisualizer = () => {
+import { inorderTraversal, preorderTraversal, postorderTraversal } from './functions/BinaryTree/TraversalAlgo';
+const BinaryTree = () => {
   const [nodes, setNodes] = useState([]);
   const [selectedNode, setSelectedNode] = useState(null);
   const [nodeValue, setNodeValue] = useState('');
@@ -11,40 +11,12 @@ const BinaryTreeVisualizer = () => {
   const svgRef = useRef(null);
   const getLeftChild = (node) => nodes.find(n => n.parent === node.id && n.isLeft);
   const getRightChild = (node) => nodes.find(n => n.parent === node.id && !n.isLeft);
-
-  // Inorder Traversal (Left, Root, Right)
-  const inorderTraversal = (node, visited = []) => {
-    if (!node) return visited;
-    inorderTraversal(getLeftChild(node), visited);
-    visited.push(node);
-    inorderTraversal(getRightChild(node), visited);
-    return visited;
-  };
-
-  // Preorder Traversal (Root, Left, Right)
-  const preorderTraversal = (node, visited = []) => {
-    if (!node) return visited;
-    visited.push(node);
-    preorderTraversal(getLeftChild(node), visited);
-    preorderTraversal(getRightChild(node), visited);
-    return visited;
-  };
-
-  // Postorder Traversal (Left, Right, Root)
-  const postorderTraversal = (node, visited = []) => {
-    if (!node) return visited;
-    postorderTraversal(getLeftChild(node), visited);
-    postorderTraversal(getRightChild(node), visited);
-    visited.push(node);
-    return visited;
-  };
-
   // Visualize traversal by highlighting nodes in sequence
   const visualizeTraversal = (traversalFunc) => {
     if (!nodes.length) return;
 
     const rootNode = nodes.find(node => node.parent === null);
-    const traversalOrder = traversalFunc(rootNode);
+    const traversalOrder = traversalFunc(rootNode, getLeftChild, getRightChild);
     
     traversalOrder.forEach((node, index) => {
       setTimeout(() => setHighlightedNode(node.id), index * 1000);
@@ -355,4 +327,4 @@ const BinaryTreeVisualizer = () => {
   );
 };
 
-export default BinaryTreeVisualizer;
+export default BinaryTree;
