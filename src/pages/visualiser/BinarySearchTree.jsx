@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-
+import { inorderTraversal, preorderTraversal, postorderTraversal } from './functions/BinarySearchTree/TraversalAlgo';
 const BinarySearchTree = () => {
   const [nodes, setNodes] = useState([]);
   const [nodeValue, setNodeValue] = useState('');
@@ -167,22 +167,56 @@ const BinarySearchTree = () => {
     setDraggingNode(null);
   };
 
-  // Traversal algorithm (Inorder)
-  const inorderTraversal = (nodeId, order = []) => {
-    if (!nodeId) return order;
+  // Traversal algorithms
+  // const inorderTraversal = (nodeId, order = []) => {
+  //   if (!nodeId) return order;
 
-    const node = nodes.find((n) => n.id === nodeId);
-    if (!node) return order;
+  //   const node = nodes.find((n) => n.id === nodeId);
+  //   if (!node) return order;
 
-    const leftChild = nodes.find((n) => n.parent === node.id && n.isLeft);
-    const rightChild = nodes.find((n) => n.parent === node.id && !n.isLeft);
+  //   const leftChild = nodes.find((n) => n.parent === node.id && n.isLeft);
+  //   const rightChild = nodes.find((n) => n.parent === node.id && !n.isLeft);
 
-    if (leftChild) inorderTraversal(leftChild.id, order);
-    order.push(nodeId);
-    if (rightChild) inorderTraversal(rightChild.id, order);
+  //   if (leftChild) inorderTraversal(leftChild.id, order);
+  //   order.push(nodeId);
+  //   if (rightChild) inorderTraversal(rightChild.id, order);
 
-    return order;
-  };
+  //   return order;
+  // };
+
+  // const preorderTraversal = (nodeId, order = []) => {
+  //   if (!nodeId) return order;
+
+  //   const node = nodes.find((n) => n.id === nodeId);
+  //   if (!node) return order;
+
+  //   order.push(nodeId);
+
+  //   const leftChild = nodes.find((n) => n.parent === node.id && n.isLeft);
+  //   const rightChild = nodes.find((n) => n.parent === node.id && !n.isLeft);
+
+  //   if (leftChild) preorderTraversal(leftChild.id, order);
+  //   if (rightChild) preorderTraversal(rightChild.id, order);
+
+  //   return order;
+  // };
+
+  // const postorderTraversal = (nodeId, order = []) => {
+  //   if (!nodeId) return order;
+
+  //   const node = nodes.find((n) => n.id === nodeId);
+  //   if (!node) return order;
+
+  //   const leftChild = nodes.find((n) => n.parent === node.id && n.isLeft);
+  //   const rightChild = nodes.find((n) => n.parent === node.id && !n.isLeft);
+
+  //   if (leftChild) postorderTraversal(leftChild.id, order);
+  //   if (rightChild) postorderTraversal(rightChild.id, order);
+
+  //   order.push(nodeId);
+
+  //   return order;
+  // };
 
   // Visualization logic
   const startTraversal = (type) => {
@@ -190,9 +224,12 @@ const BinarySearchTree = () => {
     const root = nodes.find((n) => n.parent === null);
     if (root) {
       if (type === 'inorder') {
-        order = inorderTraversal(root.id);
+        order = inorderTraversal(root.id, nodes);
+      } else if (type === 'preorder') {
+        order = preorderTraversal(root.id, nodes);
+      } else if (type === 'postorder') {
+        order = postorderTraversal(root.id, nodes);
       }
-      // You can add more traversals (preorder, postorder) here
     }
     setTraversalOrder(order);
     setCurrentTraversalIndex(0);
@@ -231,6 +268,18 @@ const BinarySearchTree = () => {
           className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md"
         >
           Visualize Inorder Traversal
+        </button>
+        <button
+          onClick={() => startTraversal('preorder')}
+          className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-md"
+        >
+          Visualize Preorder Traversal
+        </button>
+        <button
+          onClick={() => startTraversal('postorder')}
+          className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-md"
+        >
+          Visualize Postorder Traversal
         </button>
       </div>
 
